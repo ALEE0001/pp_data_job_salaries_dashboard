@@ -2,13 +2,22 @@ library(tidyverse)
 library(skimr)
 library(kaggler)
 library(gtrendsR)
+library(blsR)
+library(countrycode)
 library(plotly)
+library(geojsonio)
+library(rgdal)
+library(broom)
+library(rgeos)
 library(RColorBrewer)
 library(shiny)
 library(shinydashboard)
 library(shinyWidgets)
 library(shinyjs)
 library(shinycssloaders)
+
+# Summary: Overview dashboard of data career in United States
+
 
 # Data----
 
@@ -36,23 +45,14 @@ df_salary <-
          remote_ratio,
          employee_residence,
          company_location,
-         company_size)
+         company_size) %>%
+    filter(company_location == "US")
 
-
-
-
-df_salary %>% 
-  filter(company_location == "US") %>%
-  group_by(year, job_title) %>%
-  summarise(median_usd_salary = median(usd_salary, na.rm = TRUE)) %>%
-  ggplot(aes(x = year, y = median_usd_salary)) +
-  geom_bar(stat = "identity") + 
-  facet_wrap(~ job_title) +
-  theme_bw()
 
 
 # Goggle Trends Data
 # https://support.google.com/trends/answer/4365533?hl=en
+
 
 f_get_trend_data <- function() {
   
@@ -60,7 +60,8 @@ f_get_trend_data <- function() {
   
   trend_datasets <- 
     c("df_interest_over_time", 
-      "df_interest_by_country", 
+      # "df_interest_by_country", 
+      "df_interest_by_region",
       "df_interest_by_dma", 
       "df_interest_by_city", 
       "df_related_topics", 
@@ -73,17 +74,18 @@ f_get_trend_data <- function() {
                       "Data Science", 
                       "Artificial Intelligence", 
                       "Machine Learning",
-                      # "Business Intelligence",
                       "Deep Learning")
 
   for(i in topic_keywords) {
     
-    l_temp <- gtrends(keyword = i, geo = "", time = "all")
+    # Download US Search Trend Data from Google Trends API
+    l_temp <- gtrends(keyword = i, geo = "US", time = "all")
     
     for(i in trend_datasets){
       
       df_interest_over_time_temp <- l_temp$interest_over_time
-      df_interest_by_country_temp <- l_temp$interest_by_country
+      # df_interest_by_country_temp <- l_temp$interest_by_country
+      df_interest_by_region_temp <- l_temp$interest_by_region
       df_interest_by_dma_temp <- l_temp$interest_by_dma
       df_interest_by_city_temp <- l_temp$interest_by_city
       df_related_topics_temp <- l_temp$related_topics
@@ -94,14 +96,15 @@ f_get_trend_data <- function() {
              assign(i, eval(as.symbol(paste0(i, "_temp")))))
     }
     
-    # Sleep after each iteration so google doesn't block me
+    # Pause 2 seconds after each iteration so google doesn't block me
     Sys.sleep(2)
   }
   
   return(
     list(
       df_interest_over_time = df_interest_over_time, 
-      df_interest_by_country = df_interest_by_country,
+      # df_interest_by_country = df_interest_by_country,
+      df_interest_by_region = df_interest_by_region,
       df_interest_by_dma = df_interest_by_dma,
       df_interest_by_city = df_interest_by_city,
       df_related_topics = df_related_topics,
@@ -114,23 +117,7 @@ f_get_trend_data <- function() {
 # l_df_trend %>% write_rds(file = "data/l_df_trend.rds")
 l_df_trend <- read_rds("data/l_df_trend.rds")
 
-l_df_trend$df_interest_over_time <- 
-  l_df_trend$df_interest_over_time %>%
-  rename(Date = date, Popularity = hits, Keyword = keyword) %>%
-  filter(Keyword != "Business Intelligence")
 
-plt_trend <- 
-  l_df_trend$df_interest_over_time %>% 
-  ggplot(aes(x = Date, y = Popularity, color = Keyword)) +
-  # geom_smooth(method = "lm", formula = y ~ poly(x, 3), se = FALSE) +
-  geom_line(linewidth = 1.3) +
-  geom_point(data = l_df_trend$df_interest_over_time %>% 
-               filter(Date == max(Date))) +
-  theme_bw() +
-  scale_color_brewer(palette="RdBu", direction = 1, type = "div", name = "") +
-  xlab("") +
-  ylab("Popularity") +
-  ggtitle("Google Search Trends")
 
 
 # labs(x=NULL,
@@ -143,61 +130,162 @@ plt_trend <-
 #         plot.caption.position =  "plot") +
 
 
-ggplotly(plt_trend) %>%
-  layout(title = list(text = paste0('Google Search Trends',
-                                    '<br>',
-                                    '<sup>',
-                                    'Subtitle PlaceHolder',
-                                    '</sup>')))
-
-df_salary %>% 
-  filter(year == 2022, company_location == "US") %>% 
-  group_by(year, company_location, job_title) %>% 
-  summarise(med_salary = median(usd_salary))
-
 
 
 
 # Define UI
 ui <- dashboardPage(
-  
+    
   # Application title
-  dashboardHeader(title = "AI/ML/Data Salaries Dashboard"),
+  # dashboardHeader(title = div("US Data Career",
+  #                             class = "page-title"),
+    
+    dashboardHeader(title = "US Data Career"),
+                  # tags$li(
+                  #     div(
+                  #         img(src = "logo.png",
+                  #             title = "Logo",
+                  #             height = "67px"),
+                  #         style = "margin-right: 10px;"
+                  #     ),
+                      # class = "dropdown",
+                      # tags$style(".main-header {max-height: 70px}"),
+                      # tags$style(".main-header .logo {height: 70px}")
+                  # )
+  # ),
+                  
 
-  # Sidebar with a slider input for number of bins 
+
   dashboardSidebar(
-    useShinyjs(),
+      # includeCSS(path = "www/general.css"),
+      useShinyjs(),
+      
       sidebarMenu(
+          
           pickerInput(
-            inputId = "filterholder",
-            label = "Place Holder",
-            choices = c("Holder One", "Holder Two"),
+              inputId = "filterkeyword",
+              label = "Keyword",
+              choices = l_df_trend$df_interest_by_region$keyword %>% unique() %>% sort(),
+              multiple = TRUE,
+              options = pickerOptions(
+                  "actionsBox" = TRUE,
+                  "liveSearch" = TRUE,
+                  "size" = 10,
+                  "noneSelectedText" = "All"
+              )
+          ),
+          
+          
+          pickerInput(
+            inputId = "filterstate",
+            label = "State",
+            choices = l_df_trend$df_interest_by_region$location %>% unique() %>% sort(),
             multiple = TRUE,
-            options = list(
-              "actions-box" = TRUE,
-              "live-search" = TRUE,
+            options = pickerOptions(
+              "actionsBox" = TRUE,
+              "liveSearch" = TRUE,
               "size" = 10,
-              "non-selected-text" = "All"
+              "noneSelectedText" = "All"
+              )
             )
-      ))),
+          )
+      ),
 
-      # Show a plot of the generated distribution
+
+
       dashboardBody(
-         plotlyOutput("trend")
+          
+          div("Google Search Trends",
+                         class = "title_band"),
+                
+          plotlyOutput("trend"),
+          plotOutput("map_region"),
+          verbatimTextOutput("test"),
+          verbatimTextOutput("test2")
       )
-  )
+         
+ )
+
 
 # Define server logic required to draw a histogram
 server <- function(input, output) {
+    
+    
+    output$test <- renderText(input$filterstate)
+    output$test2 <- renderText(length(input$filterstate))
+    
+    userfilter <- function(x) {
+        x %>% filter(if(length(input$filterkeyword) != 0) {keyword %in% input$filterkeyword} else {TRUE})
+    }
 
+    df_salary %>% 
+        filter(company_location == "US") %>%
+        group_by(year, job_title) %>%
+        summarise(median_usd_salary = median(usd_salary, na.rm = TRUE)) %>%
+        ggplot(aes(x = year, y = median_usd_salary)) +
+        geom_bar(stat = "identity") + 
+        facet_wrap(~ job_title) +
+        theme_bw()
+    
+    l_df_trend$df_interest_over_time <- 
+        l_df_trend$df_interest_over_time %>%
+        rename(Date = date, Popularity = hits)
+    
+    plt_trend <- reactive(
+        l_df_trend$df_interest_over_time %>% 
+        userfilter() %>%
+        ggplot(aes(x = Date, y = Popularity, color = keyword)) +
+        # geom_smooth(method = "lm", formula = y ~ poly(x, 3), se = FALSE) +
+        geom_line(linewidth = 1.3) +
+        geom_point(data = l_df_trend$df_interest_over_time %>% 
+                       userfilter() %>%
+                       filter(Date == max(Date))) +
+        theme_bw() +
+        scale_color_brewer(palette = "RdBu", direction = 1, type = "div", name = "") +
+        xlab("") +
+        ylab("Popularity") 
+    )
+    
+    # ggplotly(plt_trend) %>%
+    #     layout(title = list(text = paste0('Google Search Trends',
+    #                                       '<br>',
+    #                                       '<sup>',
+    #                                       'Subtitle PlaceHolder',
+    #                                       '</sup>')))
+    
     output$trend <- renderPlotly({
-      plt_trend
+      ggplotly(plt_trend()) 
+        # %>% layout(legend = list(orientation = "h", x = 0.5, y = -0.3))
     })
     
     
+    df_hex_lon_lat <- read_csv("data/hex_lon_lat.csv")
+    df_hex_centers <- read_csv("data/hex_centers.csv")
     
+    # display.brewer.all(colorblindFriendly = TRUE)
     
-    
+    df_region <- 
+        df_hex_lon_lat %>% 
+        left_join(l_df_trend$df_interest_by_region, by = c("state" = "location")) %>%
+        rename(Popularity = hits)
+     
+    plt_map_region <- reactive(      
+        df_region %>%
+        userfilter() %>%
+        group_by(long, lat, state) %>% 
+        mutate(Popularity = mean(Popularity, na.rm = TRUE)) %>%
+        ungroup() %>%
+        ggplot(aes(x = long, y = lat, group = state)) +
+            geom_polygon(aes(fill = Popularity), color = "white") +
+            scale_fill_distiller(palette = "Blues", type = "seq", direction = 1) +
+            geom_text(data = df_hex_centers, aes(x = long, y = lat, label = state), col = "white") +
+            theme_void() +
+            coord_map()
+        )
+         
+    output$map_region <- renderPlot({
+        plt_map_region()
+    })
     
     
     
