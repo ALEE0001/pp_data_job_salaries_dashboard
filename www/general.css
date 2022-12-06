@@ -1,0 +1,67 @@
+@import url("https://fonts.googleapis.com/css?family=Roboto:300&display=swap");
+
+/* General Setup */
+
+body {
+    font-family: "Roboto", sans-serif !important;
+    font-size: 12px;
+    background-color: #f4f5f7;
+    --material-surface: #ffffff;
+    --material-primary: #4B9BD3;
+    --material-secondary: #4B9BD3;
+    --ttime: 0.2s;
+    --transition-time: .2s;
+    --item-color: #707070;
+    --item-active-color: #424242;
+    --item-active-bgcolor: #efefef;
+}
+
+
+/* Custom Classes -------------------------------*/
+
+/* Page Title */
+
+.title-box {
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    align-items: center;
+    color: white;
+    background-color: #041E42;
+    box-shadow: 0 4px 5px 0 rgba(0,0,0,0.14), 0 1px 10px 0 rgba(0,0,0,0.12), 0 2px 4px -1px rgba(0,0,0,0.3);
+    margin: 0;
+    padding: 10px;
+    overflow: hidden;
+}
+
+.page-title {
+    display: inline-block;
+    cursor: default;
+    font-weight: bold;
+    font-size: 20px;
+    letter-spacing: 2px;
+    color: black;
+    background-image: linear-gradient(50deg, white 33%, #729ECE 50%, white 67%);
+    background-size: 200%;
+    -webkit-background-clip: text;
+    animation: shimmer 4s ease-in-out infinite;
+    transition: color 2s ease-in-out;
+    transform: scale(1, 1.5);
+    padding-top: 6px;
+    max-height: 70px;
+}
+
+.title_band {
+    color: white;
+    background-color: #041E42;
+    text-align: left;
+    padding: 10px;
+    font-size: 100%;
+    font-weight: bold;
+}
+
+
+
+
+
+
