@@ -5,6 +5,7 @@ library(skimr)
 library(kaggler)
 library(gtrendsR)
 library(blsR)
+library(rvest)
 library(countrycode)
 library(plotly)
 library(geojsonio)
@@ -22,6 +23,52 @@ library(shinycssloaders)
 
 
 # Data----
+
+# BLS Data
+# https://www.bls.gov/help/hlpforma.htm#WM
+bls_key <- Sys.getenv("BLS_KEY")
+
+# Series ID References for API call.
+# Rerun following comment to update BLS Tables:
+# source("data/bls/bls web scraper.R")
+
+df_area_code <- 
+    read_csv("data/bls/df_area_code.csv") %>%
+    mutate(area_code = str_pad(string = area_code, width = 7, side = "left", pad = 0))
+
+df_ownership_code <- 
+    read_csv("data/bls/df_ownership_code.csv")
+
+df_estimate_code <- 
+    read_csv("data/bls/df_estimate_code.csv") %>%
+    mutate(estimate_code = str_pad(string = estimate_code, width = 2, side = "left", pad = 0))
+
+df_industry_code <- 
+    read_csv("data/bls/df_industry_code.csv") %>%
+    mutate(industry_code = str_pad(string = industry_code, width = 6, side = "left", pad = 0))
+
+df_occupation_code <- 
+    read_csv("data/bls/df_occupation_code.csv") %>%
+    mutate(occupation_code = str_pad(string = occupation_code, width = 6, side = "left", pad = 0))
+
+df_job_characteristic_code <- 
+    read_csv("data/bls/df_job_characteristic_code.csv") %>%
+    mutate(subcell_code = str_pad(string = subcell_code, width = 2, side = "left", pad = 0))
+
+df_exp_level_code <- 
+    read_csv("data/bls/df_exp_level_code.csv") %>%
+    mutate(level_code = str_pad(string = level_code, width = 2, side = "left", pad = 0))
+
+# TODO Map over reference codes and create all possible mixes of series_id
+
+# Use WMU as prefix.
+bls_salary <- get_series_table(series_id = "WMU00169801020000001520512500", 
+                               api_key = bls_key,
+                               start_year = 2004,
+                               end_year = 2022)
+
+# TODO In Thousands right now-
+df_employment_projection <- read_csv("data/bls/df_employment_projection.csv", locale = locale(encoding="latin1"))
 
 # AI/ML/Data Science Salary Data 
 # https://ai-jobs.net/salaries/download/
@@ -328,7 +375,7 @@ server <- function(input, output) {
                            userfilter() %>%
                            filter(Date == max(Date))) +
             theme_bw() +
-            scale_color_brewer(palette = "RdBu", direction = 1, type = "div", name = "") +
+            scale_color_brewer(palette = "Blues", direction = 1, type = "div", name = "") +
             xlab("") +
             ylab("Popularity")) 
         # %>% layout(legend = list(orientation = "h", x = 0.5, y = -0.3))
@@ -377,7 +424,7 @@ server <- function(input, output) {
                                summarise(Median_Salary = median(usd_salary, na.rm = TRUE))
                            ) +
                 theme_bw() +
-                scale_color_brewer(palette = "RdBu", direction = 1, type = "div", name = "") +
+                scale_color_brewer(palette = "Blues", direction = 1, type = "div", name = "") +
                 xlab("") +
                 ylab("Salary ($)")) 
         # %>% layout(legend = list(orientation = "h", x = 0.5, y = -0.3))
