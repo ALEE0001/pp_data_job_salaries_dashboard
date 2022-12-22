@@ -34,7 +34,8 @@ bls_key <- Sys.getenv("BLS_KEY")
 
 df_area_code <- 
     read_csv("data/bls/df_area_code.csv") %>%
-    mutate(area_code = str_pad(string = area_code, width = 7, side = "left", pad = 0))
+    mutate(area_code = str_pad(string = area_code, width = 7, side = "left", pad = 0)) %>%
+    filter(display_level == 0)
 
 df_ownership_code <- 
     read_csv("data/bls/df_ownership_code.csv")
@@ -49,20 +50,55 @@ df_industry_code <-
 
 df_occupation_code <- 
     read_csv("data/bls/df_occupation_code.csv") %>%
-    mutate(occupation_code = str_pad(string = occupation_code, width = 6, side = "left", pad = 0))
+    mutate(occupation_code = str_pad(string = occupation_code, width = 6, side = "left", pad = 0)) %>%
+    filter(occupation_text %in% c("Database Administrators", "Database Architects", 
+                                  "Operations Research Analysts", "Data Scientists", 
+                                  "Computer Occupations, All Other", "Engineers, All Other")
+           )
 
 df_job_characteristic_code <- 
     read_csv("data/bls/df_job_characteristic_code.csv") %>%
-    mutate(subcell_code = str_pad(string = subcell_code, width = 2, side = "left", pad = 0))
+    mutate(subcell_code = str_pad(string = subcell_code, width = 2, side = "left", pad = 0)) %>%
+    filter(subcell_code == "00")
 
 df_exp_level_code <- 
     read_csv("data/bls/df_exp_level_code.csv") %>%
-    mutate(level_code = str_pad(string = level_code, width = 2, side = "left", pad = 0))
+    mutate(level_code = str_pad(string = level_code, width = 2, side = "left", pad = 0)) %>%
+    filter(level_code == "00")
+
+crossing(nesting(area_code = df_area_code$area_code,
+                 area_text = df_area_code$area_text),
+         nesting(ownership_code = df_ownership_code$ownership_code, 
+                 owndership_text = df_ownership_code$ownership_text),
+         nesting(estimate_code = df_estimate_code$estimate_code,
+                 estimate_text = df_estimate_code$estimate_text),
+         nesting(industry_code = df_industry_code$industry_code,
+                 industry_text = df_industry_code$industry_text),
+         nesting(occupation_code = df_occupation_code$occupation_code,
+                 occupation_text = df_occupation_code$occupation_text),
+         nesting(jobchar_code = df_job_characteristic_code$subcell_code,
+                 jobchar_text = df_job_characteristic_code$subcell_text),
+         nesting(level_code = df_exp_level_code$level_code,
+                 level_text = df_exp_level_code$level_text)
+         ) %>%
+    mutate(bls_query = paste0("WMU", area_code, ownership_code, estimate_code, industry_code, 
+                              occupation_code, jobchar_code, level_code)) %>%
+    select(!contains("code"))
+
 
 # TODO Map over reference codes and create all possible mixes of series_id
 
+# test <- 
+#     map_df(
+#         list(df_area_code, df_ownership_code, df_estimate_code, df_industry_code, 
+#              df_occupation_code, df_job_characteristic_code, df_exp_level_code),
+#         
+#         )
+
+
+
 # Use WMU as prefix.
-bls_salary <- get_series_table(series_id = "WMU00169801020000001520512500", 
+bls_salary <- get_series_table(series_id = "WMU34000001020000001520512500",
                                api_key = bls_key,
                                start_year = 2004,
                                end_year = 2022)
