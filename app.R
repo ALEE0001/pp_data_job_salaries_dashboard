@@ -26,85 +26,13 @@ library(shinycssloaders)
 
 # BLS Data
 # https://www.bls.gov/help/hlpforma.htm#WM
-bls_key <- Sys.getenv("BLS_KEY")
 
-# Series ID References for API call.
-# Rerun following comment to update BLS Tables:
-# source("data/bls/bls web scraper.R")
+# Rerun following comment to update BLS data:
+# source("data/bls/get bls data.R")
 
-df_area_code <- 
-    read_csv("data/bls/df_area_code.csv") %>%
-    mutate(area_code = str_pad(string = area_code, width = 7, side = "left", pad = 0)) %>%
-    filter(display_level == 0)
+# BLS Salary
+df_bls_data <- read_csv("data/bls/df_bls_data.csv")
 
-df_ownership_code <- 
-    read_csv("data/bls/df_ownership_code.csv")
-
-df_estimate_code <- 
-    read_csv("data/bls/df_estimate_code.csv") %>%
-    mutate(estimate_code = str_pad(string = estimate_code, width = 2, side = "left", pad = 0))
-
-df_industry_code <- 
-    read_csv("data/bls/df_industry_code.csv") %>%
-    mutate(industry_code = str_pad(string = industry_code, width = 6, side = "left", pad = 0))
-
-df_occupation_code <- 
-    read_csv("data/bls/df_occupation_code.csv") %>%
-    mutate(occupation_code = str_pad(string = occupation_code, width = 6, side = "left", pad = 0)) %>%
-    filter(occupation_text %in% c("Database Administrators", "Database Architects", 
-                                  "Operations Research Analysts", "Data Scientists", 
-                                  "Computer Occupations, All Other", "Engineers, All Other")
-           )
-
-df_job_characteristic_code <- 
-    read_csv("data/bls/df_job_characteristic_code.csv") %>%
-    mutate(subcell_code = str_pad(string = subcell_code, width = 2, side = "left", pad = 0)) %>%
-    filter(subcell_code == "00")
-
-df_exp_level_code <- 
-    read_csv("data/bls/df_exp_level_code.csv") %>%
-    mutate(level_code = str_pad(string = level_code, width = 2, side = "left", pad = 0)) %>%
-    filter(level_code == "00")
-
-crossing(nesting(area_code = df_area_code$area_code,
-                 area_text = df_area_code$area_text),
-         nesting(ownership_code = df_ownership_code$ownership_code, 
-                 owndership_text = df_ownership_code$ownership_text),
-         nesting(estimate_code = df_estimate_code$estimate_code,
-                 estimate_text = df_estimate_code$estimate_text),
-         nesting(industry_code = df_industry_code$industry_code,
-                 industry_text = df_industry_code$industry_text),
-         nesting(occupation_code = df_occupation_code$occupation_code,
-                 occupation_text = df_occupation_code$occupation_text),
-         nesting(jobchar_code = df_job_characteristic_code$subcell_code,
-                 jobchar_text = df_job_characteristic_code$subcell_text),
-         nesting(level_code = df_exp_level_code$level_code,
-                 level_text = df_exp_level_code$level_text)
-         ) %>%
-    mutate(bls_query = paste0("WMU", area_code, ownership_code, estimate_code, industry_code, 
-                              occupation_code, jobchar_code, level_code)) %>%
-    select(!contains("code"))
-
-
-# TODO Map over reference codes and create all possible mixes of series_id
-
-# test <- 
-#     map_df(
-#         list(df_area_code, df_ownership_code, df_estimate_code, df_industry_code, 
-#              df_occupation_code, df_job_characteristic_code, df_exp_level_code),
-#         
-#         )
-
-
-
-# Use WMU as prefix.
-bls_salary <- get_series_table(series_id = "WMU34000001020000001520512500",
-                               api_key = bls_key,
-                               start_year = 2004,
-                               end_year = 2022)
-
-# TODO In Thousands right now-
-df_employment_projection <- read_csv("data/bls/df_employment_projection.csv", locale = locale(encoding="latin1"))
 
 # AI/ML/Data Science Salary Data 
 # https://ai-jobs.net/salaries/download/
@@ -149,6 +77,7 @@ df_salary <-
                                job_bin == "Data Engineer" ~ "Data Engineering",
                                job_bin == "Data Scientist" ~ "Data Science",
                                job_bin == "Machine Learning Engineer" ~ "Machine Learning",
+                               job_bin == "Business Intelligence Analyst" ~ "Business Intelligence",
                                TRUE ~ "Other")) %>%
     group_by(job_bin) %>%
     mutate(job_bin_count = n()) %>%
@@ -467,6 +396,19 @@ server <- function(input, output) {
     )
     
     
+    output$bls_salary_map_region <- renderPlot(
+        df_region %>%
+            userfilter() %>%
+            group_by(long, lat, state) %>%
+            mutate(Popularity = mean(Popularity, na.rm = TRUE)) %>%
+            ungroup() %>%
+            ggplot(aes(x = long, y = lat, group = state)) +
+            geom_polygon(aes(fill = Popularity), color = "white") +
+            scale_fill_distiller(palette = "Blues", type = "seq", direction = 1) +
+            geom_text(data = df_hex_centers, aes(x = long, y = lat, label = state), col = "white") +
+            theme_void() +
+            coord_map()
+    )
     
     
 }
