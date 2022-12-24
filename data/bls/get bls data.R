@@ -1,4 +1,9 @@
+library(tidyverse)
+library(lubridate)
 library(readxl)
+
+# BLS Data
+# https://www.bls.gov/help/hlpforma.htm#WM
 
 bls_start_date <- 2004
 
@@ -47,12 +52,30 @@ jobs <- c("database administrators", "database architects",
           "total, all occupations", "computer and information research scientists", 
           "management analysts")
 
-df_bls_data <- 
-    f_get_bls(bls_years) %>% 
+df_bls_data_base <- f_get_bls(bls_years)
+
+occ_codes <- 
+    df_bls_data_base %>%
     mutate(OCC_TITLE = tolower(OCC_TITLE)) %>%
     filter(OCC_TITLE %in% jobs) %>%
-    select(AREA_TITLE, OCC_TITLE, O_GROUP, TOT_EMP, JOBS_1000, 
-           H_MEAN, A_MEAN, H_PCT10, H_PCT90, H_MEDIAN, A_PCT10, A_PCT90, A_MEDIAN)
+    .$OCC_CODE %>%
+    unique()
+
+df_bls_data <- df_bls_data_base %>%
+    mutate(OCC_TITLE = tolower(OCC_TITLE)) %>%
+    filter(OCC_CODE %in% occ_codes) %>%
+    select(year, AREA_TITLE, OCC_CODE, OCC_TITLE, O_GROUP, TOT_EMP, JOBS_1000, 
+           H_MEAN, A_MEAN, H_PCT10, H_PCT90, H_MEDIAN, A_PCT10, A_PCT90, A_MEDIAN) %>%
+    mutate(keyword = case_when(OCC_TITLE == "database administrators" ~ "Data Engineering",
+                               OCC_TITLE == "database architects" ~ "Data Architecture",
+                               OCC_TITLE == "operations research analysts" ~ "Data Analytics",
+                               OCC_TITLE == "data scientists" ~ "Data Science",
+                               OCC_TITLE == "management analysts" ~ "Business Intelligence",
+                               OCC_TITLE == "computer and information research scientists" ~ "Machine Learning",
+                               OCC_TITLE == "total, all occupations" ~ "All US Occupations")) %>%
+    rename(state = AREA_TITLE) %>%
+    rename(Median_Salary = A_MEDIAN) %>%
+    rename(Mean_Salary = A_MEAN)
 
 df_bls_data %>% write.csv(file = "data/bls/df_bls_data.csv", row.names = FALSE)
 
