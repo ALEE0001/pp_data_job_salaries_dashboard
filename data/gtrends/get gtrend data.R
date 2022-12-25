@@ -1,22 +1,21 @@
 library(tidyverse)
 library(lubridate)
 library(gtrendsR)
+library(datasets)
 
+v_state_abb <- paste0("-", datasets::state.abb) %>% append("")
 
 # Google Trends Data
 # https://support.google.com/trends/answer/4365533?hl=en
+# Takes 10~15 mins to run due to Google's API Request limit.
 
 f_get_trend_data <- function(type = c("relative", "independent")) {
     
     env_get_trend_data <- environment()
     
-    trend_datasets <- 
-        c("df_interest_over_time", 
-          "df_interest_by_region",
-          "df_interest_by_dma", 
-          "df_interest_by_city", 
-          "df_related_topics", 
-          "df_related_queries")
+    trend_datasets <-
+        c("df_interest_over_time",
+          "df_interest_by_region")
     
     lapply(trend_datasets, function(x) {if(exists(x)){rm(list = x, envir = env_get_trend_data)}})
     
@@ -28,55 +27,94 @@ f_get_trend_data <- function(type = c("relative", "independent")) {
     
     # Relative download enables comparison between topic keywords
     if(type == "relative") {
-        l_temp <- gtrends(keyword = topic_keywords, geo = "US", time = "all")
         
-        df_interest_over_time <- l_temp$interest_over_time
-        df_interest_by_region <- l_temp$interest_by_region
-        df_interest_by_dma <- l_temp$interest_by_dma
-        df_interest_by_city <- l_temp$interest_by_city
-        df_related_topics <- l_temp$related_topics
-        df_related_queries <- l_temp$related_queries
+        for(state in v_state_abb) {
+            
+            l_temp <- gtrends(keyword = topic_keywords, geo = "US", time = "all")
+           
+            df_interest_over_time_temp <- l_temp$interest_over_time %>% mutate(across(everything(), as.character))
+            df_interest_by_region_temp <- l_temp$interest_by_region %>% mutate(across(everything(), as.character))
+            
+            if(!exists("df_interest_over_time")) {
+                df_interest_over_time <- df_interest_over_time_temp
+            } else {
+                df_interest_over_time <- bind_rows(df_interest_over_time, df_interest_over_time_temp)
+                
+            }
+            
+            if(!exists("df_interest_by_region")) {
+                df_interest_by_region <- df_interest_by_region_temp
+            } else {
+                df_interest_by_region <- bind_rows(df_interest_by_region, df_interest_by_region_temp)
+                
+            }
+            
+            Sys.sleep(3) 
+        }
+        
+
     
     # Independent download looks at topic keywords individually
     } else if(type == "independent") {
         
         for(i in topic_keywords) {
             
-            # Download US Search Trend Data from Google Trends API
-            l_temp <- gtrends(keyword = i, geo = "US", time = "all")
-            
-            for(i in trend_datasets){
+            for(state in v_state_abb) {
+               
+                 # Download US Search Trend Data from Google Trends API
+                l_temp <- gtrends(keyword = i, geo = paste0("US",state), time = "all", onlyInterest = TRUE)
                 
-                df_interest_over_time_temp <- l_temp$interest_over_time
-                df_interest_by_region_temp <- l_temp$interest_by_region
-                df_interest_by_dma_temp <- l_temp$interest_by_dma
-                df_interest_by_city_temp <- l_temp$interest_by_city
-                df_related_topics_temp <- l_temp$related_topics
-                df_related_queries_temp <- l_temp$related_queries
+                df_interest_over_time_temp <- l_temp$interest_over_time %>% mutate(across(everything(), as.character))
                 
-                ifelse(exists(i),
-                       assign(i, eval(as.symbol(i)) %>% bind_rows(eval(as.symbol(paste0(i, "_temp"))))),
-                       assign(i, eval(as.symbol(paste0(i, "_temp")))))
+                if(!exists("df_interest_over_time")) {
+                    df_interest_over_time <- df_interest_over_time_temp
+                } else {
+                    df_interest_over_time <- bind_rows(df_interest_over_time, df_interest_over_time_temp)
+                }
+                
+                Sys.sleep(3) 
             }
             
-            # Pause 2 seconds after each iteration so google doesn't block me
-            Sys.sleep(2)
+
+            
+            # for(i in trend_datasets){
+            #     
+            #     df_interest_over_time_temp <- l_temp$interest_over_time
+                # df_interest_by_region_temp <- l_temp$interest_by_region
+                # df_interest_by_dma_temp <- l_temp$interest_by_dma
+                # df_interest_by_city_temp <- l_temp$interest_by_city
+                # df_related_topics_temp <- l_temp$related_topics
+                # df_related_queries_temp <- l_temp$related_queries
+                
+            #     ifelse(exists(i),
+            #            assign(i, eval(as.symbol(i)) %>% bind_rows(eval(as.symbol(paste0(i, "_temp"))))),
+            #            assign(i, eval(as.symbol(paste0(i, "_temp")))))
+            # }
+            
+            Sys.sleep(5)
         }
     } else {print("Incorrect Type")}
     
-    return(
-        list(
-            df_interest_over_time = df_interest_over_time,
-            df_interest_by_region = df_interest_by_region,
-            df_interest_by_dma = df_interest_by_dma,
-            df_interest_by_city = df_interest_by_city,
-            df_related_topics = df_related_topics,
-            df_related_queries = df_related_queries
+    if(type == "relative") {
+        
+        return(
+            list(
+                df_interest_over_time = df_interest_over_time,
+                df_interest_by_region = df_interest_by_region
+            )
         )
-    )
+    } else if(type == "independent") {
+        
+        return(
+            list(
+                df_interest_over_time = df_interest_over_time
+            )
+        )
+    }
+
 }
 
-#
+
 l_df_trend_relative <- f_get_trend_data("relative")
 
 l_df_trend_relative$df_interest_by_region <- 
