@@ -6,20 +6,19 @@
 library(tidyverse)
 library(lubridate)
 library(scales)
-library(skimr)
-library(countrycode)
 library(plotly)
-library(geojsonio)
-library(rgdal)
-library(broom)
-library(rgeos)
 library(RColorBrewer)
 library(shiny)
 library(shinydashboard)
 library(shinyWidgets)
 library(shinyjs)
 library(shinycssloaders)
-
+# library(skimr)
+# library(countrycode)
+# library(geojsonio)
+# library(rgdal)
+# library(broom)
+# library(rgeos)
 
 
 # Data----
@@ -229,7 +228,7 @@ server <- function(input, output) {
          
     output$map_region <- renderPlot(
         df_region %>%
-            # userfilterkeyword() %>%
+            userfilterkeyword() %>%
             group_by(long, lat, state) %>% 
             mutate(Popularity = mean(Popularity, na.rm = TRUE)) %>%
             ungroup() %>%
