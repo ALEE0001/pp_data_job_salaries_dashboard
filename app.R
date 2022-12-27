@@ -61,6 +61,18 @@ ui <- dashboardPage(
                                    from = "Contact Me",
                                    message = "alexmize@my.unt.edu",
                                    icon = icon("envelope")
+                               ),
+                               messageItem(
+                                   from = "Portfolio",
+                                   message = "Click Here",
+                                   href = "https://alee0001.github.io",
+                                   icon = icon("pen")
+                               ),
+                               messageItem(
+                                   from = "Github",
+                                   message = "Click Here",
+                                   href = "https://github.com/ALEE0001/pp_us_data_job_dashboard",
+                                   icon = icon("github")
                                )
                   )),
 
