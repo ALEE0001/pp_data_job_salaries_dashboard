@@ -1,6 +1,7 @@
 library(tidyverse)
 library(lubridate)
 library(readxl)
+library(rvest)
 
 # BLS Data
 # https://www.bls.gov/help/hlpforma.htm#WM
@@ -82,6 +83,30 @@ df_bls_data %>% write.csv(file = "data/bls/df_bls_data.csv", row.names = FALSE)
 # Delete Temp Files
 unlink("data/bls/oesm", recursive = TRUE)
 
-message("Created & Cleansed: df_bls_data")
-message("Object was saved in csv format in data/bls")
 
+jobs_v2 <- c("")
+
+
+# Employment Projections----
+df_bls_projection <- 
+    read_html("https://www.bls.gov/emp/tables/emp-by-detailed-occupation.htm") %>%
+    html_nodes("table") %>% 
+    html_table() %>% 
+    .[[1]] %>%
+    as_tibble() %>%
+    rename(job_title = `2021 National Employment Matrix title`) %>%
+    mutate(job_title = tolower(job_title)) %>%
+    filter(job_title %in% jobs) %>%
+    mutate(keyword = case_when(job_title == "database administrators" ~ "Data Engineering",
+                               job_title == "database architects" ~ "Data Architecture",
+                               job_title == "operations research analysts" ~ "Data Analytics",
+                               job_title == "data scientists" ~ "Data Science",
+                               job_title == "computer and information research scientists" ~ "Machine Learning")) %>%
+    rename(Keyword = keyword) %>%
+    rename(employment_projection = `Percent employment change, 2021–31`)
+
+df_bls_projection %>% write.csv(file = "data/bls/df_bls_projection.csv", row.names = FALSE)
+
+
+message("Created & Cleansed: df_bls_data, df_bls_projection")
+message("Objects were saved in csv format in data/bls")

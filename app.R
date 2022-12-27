@@ -8,6 +8,7 @@ library(tidyverse)
 library(lubridate)
 library(scales)
 library(plotly)
+library(mapproj)
 library(RColorBrewer)
 library(shiny)
 library(shinydashboard)
@@ -22,6 +23,7 @@ library(shinycssloaders)
 # Rerun following comment to update BLS data:
 # source("data/bls/get bls data.R")
 df_bls_data <- read_csv("data/bls/df_bls_data.csv")
+df_bls_projection <- read_csv("data/bls/df_bls_projection.csv", locale=locale(encoding="latin1"))
   
 ## GTrends Data----
 # Rerun following comment to update GTrends data:
@@ -67,8 +69,10 @@ ui <- dashboardPage(
   dashboardBody(
       
       tags$style(".fa-chart-simple {color:#FFFFFF}"),
-      tags$style(".fa-dollar-sign {color:#FFFFFF}"),
       tags$style(".fa-person-walking-luggage {color:#FFFFFF}"),
+      tags$style(".fa-seedling {color:#FFFFFF}"),
+      tags$style(".fa-dollar-sign {color:#FFFFFF}"),
+      
       
       includeCSS(path = "www/general.css"),
       useShinyjs(),
@@ -112,9 +116,10 @@ ui <- dashboardPage(
       
       fluidRow(
           column(width = 12,
-                 valueBoxOutput(width = 4, "vb_trend"),
-                 valueBoxOutput(width = 4, "vb_employment"),
-                 valueBoxOutput(width = 4, "vb_salary")
+                 valueBoxOutput(width = 3, "vb_trend"),
+                 valueBoxOutput(width = 3, "vb_employment"),
+                 valueBoxOutput(width = 3, "vb_employment_projection"),
+                 valueBoxOutput(width = 3, "vb_salary")
                  
           )
       ),
@@ -190,7 +195,7 @@ server <- function(input, output) {
             color = "navy")
     )
     
-    # Value Box for Total Employment
+    # Value Box for Employment
     output$vb_employment <- renderValueBox(
         valueBox(
             value = 
@@ -205,6 +210,22 @@ server <- function(input, output) {
                 number(),
             subtitle = paste("Total Employment", max(df_bls_data$Year)),
             icon = icon("person-walking-luggage"),
+            color = "navy")
+    )
+    
+    # Value Box for Employment Projection
+    output$vb_employment_projection <- renderValueBox(
+        valueBox(
+            value =
+                df_bls_projection %>%
+                filter(Keyword != "All US Occupations") %>%
+                userfilterkeyword() %>%
+                .$employment_projection %>%
+                as.numeric() %>%
+                median(na.rm = TRUE) %>%
+                paste0("%"),
+            subtitle = paste("Job Growth in 10 Yrs"),
+            icon = icon("seedling"),
             color = "navy")
     )
     
@@ -232,13 +253,17 @@ server <- function(input, output) {
         ggplotly(
             l_df_trend_relative$df_interest_over_time %>% 
             userfilterkeyword() %>%
-            userfilterstate_w_us() %>%    
+            userfilterstate_w_us() %>%
+            group_by(Date, Keyword) %>%
+            mutate(Popularity = median(Popularity, na.rm = TRUE)) %>%
             ggplot(aes(x = Date, y = Popularity, color = Keyword)) +
             geom_line(linewidth = 1.3) +
             geom_point(data = l_df_trend_relative$df_interest_over_time %>% 
                            userfilterkeyword() %>%
                            userfilterstate_w_us() %>%
-                           filter(Date == max(Date))) +
+                           filter(Date == max(Date)) %>%
+                           group_by(Keyword) %>%
+                           mutate(Popularity = median(Popularity, na.rm = TRUE))) +
             theme_bw() +
             scale_color_brewer(palette = "Paired", direction = 1, type = "div", name = "") +
             xlab("") +
@@ -252,7 +277,7 @@ server <- function(input, output) {
         df_region %>%
             userfilterkeyword() %>%
             group_by(long, lat, state) %>% 
-            mutate(Popularity = mean(Popularity, na.rm = TRUE)) %>%
+            mutate(Popularity = median(Popularity, na.rm = TRUE)) %>%
             ungroup() %>%
             ggplot(aes(x = long, y = lat, group = state)) +
             geom_polygon(aes(fill = Popularity), color = "white") +
