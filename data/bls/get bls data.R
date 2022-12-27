@@ -49,8 +49,7 @@ f_get_bls <- function(x) {
 
 jobs <- c("database administrators", "database architects", 
           "operations research analysts", "data scientists", 
-          "total, all occupations", "computer and information research scientists", 
-          "management analysts")
+          "all occupations", "computer and information research scientists")
 
 df_bls_data_base <- f_get_bls(bls_years)
 
@@ -70,14 +69,18 @@ df_bls_data <- df_bls_data_base %>%
                                OCC_TITLE == "database architects" ~ "Data Architecture",
                                OCC_TITLE == "operations research analysts" ~ "Data Analytics",
                                OCC_TITLE == "data scientists" ~ "Data Science",
-                               OCC_TITLE == "management analysts" ~ "Business Intelligence",
                                OCC_TITLE == "computer and information research scientists" ~ "Machine Learning",
-                               OCC_TITLE == "total, all occupations" ~ "All US Occupations")) %>%
+                               OCC_TITLE == "all occupations" ~ "All US Occupations")) %>%
     rename(state = AREA_TITLE) %>%
     rename(Median_Salary = A_MEDIAN) %>%
-    rename(Mean_Salary = A_MEAN)
+    rename(Mean_Salary = A_MEAN) %>%
+    rename(Year = year) %>%
+    rename(Keyword = keyword)
 
 df_bls_data %>% write.csv(file = "data/bls/df_bls_data.csv", row.names = FALSE)
+
+# Delete Temp Files
+unlink("data/bls/oesm", recursive = TRUE)
 
 message("Created & Cleansed: df_bls_data")
 message("Object was saved in csv format in data/bls")
