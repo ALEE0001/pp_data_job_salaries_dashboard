@@ -8,4 +8,4 @@ Preview:
 
 Visit https://alee0001.shinyapps.io/US_Data_Careers to try out the final product.
 
-Note: Limited to a total of 25 Active Usage Hours per month, because I'm cheap & using free domain.
+Note: Limited to a total of 25 Active Usage Hours per month on this free domain, because I'm cheap like that. Please revisit next month if the link doesn't work.
