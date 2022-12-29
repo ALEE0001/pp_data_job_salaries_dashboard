@@ -220,7 +220,7 @@ server <- function(input, output) {
                 as.numeric() %>%
                 sum(na.rm = TRUE) %>% 
                 number(),
-            subtitle = paste("Total Employment", max(df_bls_data$Year)),
+            subtitle = paste("Employed Jobs", max(df_bls_data$Year)),
             icon = icon("person-walking-luggage"),
             color = "navy")
     )
@@ -236,7 +236,7 @@ server <- function(input, output) {
                 as.numeric() %>%
                 median(na.rm = TRUE) %>%
                 paste0("%"),
-            subtitle = paste("Job Growth in 10 Yrs"),
+            subtitle = paste("Job Growth Next 10 Yrs"),
             icon = icon("seedling"),
             color = "navy")
     )
@@ -279,7 +279,7 @@ server <- function(input, output) {
             theme_bw() +
             scale_color_brewer(palette = "Paired", direction = 1, type = "div", name = "") +
             xlab("") +
-            ylab("Popularity")) %>%
+            ylab("Comparative Popularity")) %>%
             layout(legend = list(orientation = "h", x = 1, xanchor = "right"))
         )
     
@@ -325,7 +325,7 @@ server <- function(input, output) {
                     theme_bw() +
                     scale_color_brewer(palette = "Paired", direction = 1, type = "div", name = "") +
                     xlab("") +
-                    ylab("Total Employment")) %>%
+                    ylab("Number of Employed Jobs")) %>%
                 layout(legend = list(orientation = "h", x = 1, xanchor = "right"))
         })
     )
