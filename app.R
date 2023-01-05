@@ -380,7 +380,6 @@ server <- function(input, output) {
                 # All Jobs
                 geom_line(data = df_bls_data %>%
                                filter(Keyword == "All US Occupations") %>%
-                               userfilterkeyword() %>%
                                userfilterstate() %>%
                                group_by(Year, Keyword) %>% 
                                summarise(`10th_Percentile_Salary ($)` = median(as.numeric(A_PCT10), na.rm = TRUE),
